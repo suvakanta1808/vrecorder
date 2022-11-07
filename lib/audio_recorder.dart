@@ -6,9 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:record/record.dart';
 
 class AudioRecorder extends StatefulWidget {
-  final void Function(String path) onStop;
-
-  const AudioRecorder({Key? key, required this.onStop}) : super(key: key);
+  const AudioRecorder({Key? key}) : super(key: key);
 
   @override
   _AudioRecorderState createState() => _AudioRecorderState();
@@ -51,7 +49,7 @@ class _AudioRecorderState extends State<AudioRecorder> {
         // final isRecording = await _audioRecorder.isRecording();
 
         var timestamp = DateTime.now().toIso8601String();
-        var audioPath = '/storage/emulated/0/vrecorder/$timestamp.mp3';
+        var audioPath = '/storage/emulated/0/vrecorder/$timestamp.txt';
 
         Directory directory = Directory('/storage/emulated/0/vrecorder');
         if (!directory.existsSync()) {
@@ -76,9 +74,9 @@ class _AudioRecorderState extends State<AudioRecorder> {
 
     final path = await _audioRecorder.stop();
 
-    if (path != null) {
-      widget.onStop(path);
-    }
+    // if (path != null) {
+    //   widget.onStop(path);
+    // }
   }
 
   Future<void> _pause() async {

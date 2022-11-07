@@ -1,6 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:vrecorder/audio_recorder.dart';
+import 'package:vrecorder/home_page.dart';
 
 // import 'package:record_example/audio_player.dart';
 
@@ -25,31 +24,34 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: showPlayer
-              ? const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 25),
-                  child: Text('Audio Player'),
-                  // AudioPlayer(
-                  //   source: audioPath!,
-                  //   onDelete: () {
-                  //     setState(() => showPlayer = false);
-                  //   },
-                  // ),
-                )
-              : AudioRecorder(
-                  onStop: (path) {
-                    if (kDebugMode) print('Recorded file path: $path');
-                    setState(() {
-                      audioPath = path;
-                      showPlayer = true;
-                    });
-                  },
-                ),
-        ),
-      ),
+    return const MaterialApp(
+      home: HomePage(),
     );
   }
 }
+
+
+// Scaffold(
+//         body: Center(
+//           child: showPlayer
+//               ? const Padding(
+//                   padding: EdgeInsets.symmetric(horizontal: 25),
+//                   child: Text('Audio Player'),
+//                   // AudioPlayer(
+//                   //   source: audioPath!,
+//                   //   onDelete: () {
+//                   //     setState(() => showPlayer = false);
+//                   //   },
+//                   // ),
+//                 )
+//               : AudioRecorder(
+//                   onStop: (path) {
+//                     if (kDebugMode) print('Recorded file path: $path');
+//                     setState(() {
+//                       audioPath = path;
+//                       showPlayer = true;
+//                     });
+//                   },
+//                 ),
+//         ),
+//       )
