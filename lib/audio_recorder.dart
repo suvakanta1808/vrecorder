@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:record/record.dart';
+import 'package:vrecorder/message.dart';
+import './dummy_messages.dart';
 
 class AudioRecorder extends StatefulWidget {
   const AudioRecorder({Key? key}) : super(key: key);
@@ -20,6 +22,7 @@ class _AudioRecorderState extends State<AudioRecorder> {
   RecordState _recordState = RecordState.stop;
   StreamSubscription<Amplitude>? _amplitudeSub;
   Amplitude? _amplitude;
+  String? _filename;
 
   @override
   void initState() {
@@ -49,7 +52,11 @@ class _AudioRecorderState extends State<AudioRecorder> {
         // final isRecording = await _audioRecorder.isRecording();
 
         var timestamp = DateTime.now().toIso8601String();
-        var audioPath = '/storage/emulated/0/vrecorder/$timestamp.txt';
+        setState(() {
+          _filename = timestamp;
+          messages.add(Message(message: 'Recording started!', sender: 'Bot'));
+        });
+        var audioPath = '/storage/emulated/0/vrecorder/$timestamp.wav';
 
         Directory directory = Directory('/storage/emulated/0/vrecorder');
         if (!directory.existsSync()) {
@@ -74,6 +81,10 @@ class _AudioRecorderState extends State<AudioRecorder> {
 
     final path = await _audioRecorder.stop();
 
+    setState(() {
+      messages.add(Message(message: '$_filename.wav', sender: 'Me'));
+    });
+
     // if (path != null) {
     //   widget.onStop(path);
     // }
@@ -89,30 +100,37 @@ class _AudioRecorderState extends State<AudioRecorder> {
     await _audioRecorder.resume();
   }
 
+  void sendBotReply() {
+    Future.delayed(const Duration(milliseconds: 500), () {
+      setState(() {
+        messages.add(Message(
+            message: 'Please wait! Processing your request.', sender: 'bot'));
+      });
+      sendBotReply();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        body: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                _buildRecordStopControl(),
-                const SizedBox(width: 20),
-                _buildPauseResumeControl(),
-                const SizedBox(width: 20),
-                _buildText(),
-              ],
-            ),
-            if (_amplitude != null) ...[
-              const SizedBox(height: 40),
-              Text('Current: ${_amplitude?.current ?? 0.0}'),
-              Text('Max: ${_amplitude?.max ?? 0.0}'),
+    return SizedBox(
+      height: 100,
+      width: MediaQuery.of(context).size.width,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildTimer(),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              _buildRecordStopControl(),
+              const SizedBox(width: 20),
+              _buildPauseResumeControl(),
+              // const SizedBox(width: 20),
+              // _buildText(),
             ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -182,21 +200,14 @@ class _AudioRecorderState extends State<AudioRecorder> {
     );
   }
 
-  Widget _buildText() {
-    if (_recordState != RecordState.stop) {
-      return _buildTimer();
-    }
-
-    return const Text("Waiting to record");
-  }
-
   Widget _buildTimer() {
     final String minutes = _formatNumber(_recordDuration ~/ 60);
     final String seconds = _formatNumber(_recordDuration % 60);
 
     return Text(
       '$minutes : $seconds',
-      style: const TextStyle(color: Colors.red),
+      textAlign: TextAlign.center,
+      style: const TextStyle(color: Colors.white),
     );
   }
 

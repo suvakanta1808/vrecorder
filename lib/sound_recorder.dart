@@ -16,7 +16,7 @@ import 'package:permission_handler/permission_handler.dart';
  */
 
 ///
-const int tSampleRate = 44000;
+const int tSampleRate = 16000;
 typedef _Fn = void Function();
 
 /// Example app.
@@ -93,7 +93,7 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
   Future<IOSink> createFile() async {
     // var tempDir = await getTemporaryDirectory();
     var timestamp = DateTime.now().toIso8601String();
-    _mPath = '/storage/emulated/0/vrecorder/$timestamp.pcm';
+    _mPath = '/storage/emulated/0/vrecorder/$timestamp.txt';
     print(_mPath);
     var outputFile = File(_mPath!);
     if (outputFile.existsSync()) {
@@ -110,6 +110,7 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
     var recordingDataController = StreamController<Food>();
     _mRecordingDataSubscription =
         recordingDataController.stream.listen((buffer) {
+      // debugPrint(buffer.toString());
       if (buffer is FoodData) {
         sink.add(buffer.data!);
       }
