@@ -1,9 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:audio_session/audio_session.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import "audiowaveform_response.dart";
 
 /*
  * This is an example showing how to record to a Dart Stream.
@@ -90,39 +95,56 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
     super.dispose();
   }
 
-  Future<IOSink> createFile() async {
-    // var tempDir = await getTemporaryDirectory();
-    var timestamp = DateTime.now().toIso8601String();
-    _mPath = '/storage/emulated/0/vrecorder/$timestamp.txt';
-    print(_mPath);
-    var outputFile = File(_mPath!);
-    if (outputFile.existsSync()) {
-      await outputFile.delete();
-    }
-    return outputFile.openWrite();
+  Future<String> createFile() async {
+    var tempDir = await getExternalStorageDirectory();
+    var timestamp = '${DateTime.now().millisecondsSinceEpoch}.wav';
+    setState(() {
+      _mPath = '${tempDir!.path}/$timestamp';
+    });
+    return _mPath!;
   }
 
   // ----------------------  Here is the code to record to a Stream ------------
 
   Future<void> record() async {
     assert(_mRecorderIsInited && _mPlayer!.isStopped);
-    var sink = await createFile();
-    var recordingDataController = StreamController<Food>();
-    _mRecordingDataSubscription =
-        recordingDataController.stream.listen((buffer) {
-      // debugPrint(buffer.toString());
-      if (buffer is FoodData) {
-        sink.add(buffer.data!);
-      }
-    });
+    var fileName = await createFile();
+
     await _mRecorder!.startRecorder(
-      toStream: recordingDataController.sink,
-      codec: Codec.pcm16,
+      toFile: fileName,
+      codec: Codec.pcm16WAV,
       numChannels: 1,
       sampleRate: tSampleRate,
     );
     setState(() {});
   }
+
+  sendRequest(String audioPath) async {
+    var postUri = Uri.parse(
+        "https://e376-2405-201-a00b-6081-e80c-9065-91b8-b936.ngrok.io/audiowave");
+    var request = http.MultipartRequest("POST", postUri);
+    try {
+      Uint8List fileBuffer = await File(audioPath).readAsBytes();
+      request.files.add(await http.MultipartFile.fromPath(
+        'file',
+        audioPath,
+        contentType: MediaType('audio', 'mp3'),
+      ));
+      final response = await request.send();
+
+      if (response.statusCode == 201) {
+        print("Request Sent!");
+        final respStr = await response.stream.bytesToString();
+        AudiowaveFormResponse audiowaveFormResponse =
+            audiowaveFormResponseFromJson(respStr);
+
+        debugPrint(audiowaveFormResponse.data.toString());
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
   // --------------------- (it was very simple, wasn't it ?) -------------------
 
   Future<void> stopRecorder() async {
@@ -132,6 +154,8 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
       _mRecordingDataSubscription = null;
     }
     _mplaybackReady = true;
+
+    sendRequest(_mPath!);
   }
 
   _Fn? getRecorderFn() {

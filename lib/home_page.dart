@@ -1,12 +1,8 @@
 import 'dart:io' as io;
 
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:vrecorder/audio_recorder.dart';
 import 'package:vrecorder/own_message_card.dart';
 import 'package:vrecorder/reply_card.dart';
-import './dummy_messages.dart';
-
 import 'message.dart';
 
 class HomePage extends StatefulWidget {
@@ -25,27 +21,31 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
+  List<Message> messages = [
+    Message(message: "Hello", sender: "bot"),
+  ];
+
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    _listofFiles();
+    // _listofFiles();
   }
 
   // Make New Function
-  void _listofFiles() async {
-    PermissionStatus status = await Permission.storage.status;
+  // void _listofFiles() async {
+  //   PermissionStatus status = await Permission.storage.status;
 
-    if (!status.isGranted) {
-      await Permission.storage.request();
-    }
+  //   if (!status.isGranted) {
+  //     await Permission.storage.request();
+  //   }
 
-    directory = "/storage/emulated/0"; //Give your folder path
-    setState(() {
-      files = io.Directory("$directory/vrecorder/")
-          .listSync(); //use your folder name insted of resume.
-    });
-  }
+  //   directory = "/storage/emulated/0"; //Give your folder path
+  //   setState(() {
+  //     files = io.Directory("$directory/vrecorder/")
+  //         .listSync(); //use your folder name insted of resume.
+  //   });
+  // }
 
   void sendBotReply() {
     _scrollController.animateTo(
@@ -113,7 +113,7 @@ class _HomePageState extends State<HomePage> {
                 // width: MediaQuery.of(context).size.width,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [AudioRecorder()],
+                  children: const [],
                 ),
               )
             ],
@@ -150,8 +150,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
-
 
 // Navigator.push(context, MaterialPageRoute(builder: (c) {
 //             return const AudioRecorder();
