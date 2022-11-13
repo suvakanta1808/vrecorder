@@ -1,63 +1,29 @@
 import 'dart:io' as io;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:vrecorder/message_list.dart';
 import 'package:vrecorder/own_message_card.dart';
 import 'package:vrecorder/reply_card.dart';
+import 'package:vrecorder/sound_recorder.dart';
 import 'message.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
+class HomePage extends StatelessWidget {
   //Declare Globaly
   String? directory;
   List<io.FileSystemEntity> files = [];
-  final _isRecorderOn = false;
-
-  final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  List<Message>? messages;
 
-  List<Message> messages = [
-    Message(message: "Hello", sender: "bot"),
-  ];
-
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-    // _listofFiles();
-  }
-
-  // Make New Function
-  // void _listofFiles() async {
-  //   PermissionStatus status = await Permission.storage.status;
-
-  //   if (!status.isGranted) {
-  //     await Permission.storage.request();
-  //   }
-
-  //   directory = "/storage/emulated/0"; //Give your folder path
-  //   setState(() {
-  //     files = io.Directory("$directory/vrecorder/")
-  //         .listSync(); //use your folder name insted of resume.
-  //   });
-  // }
-
-  void sendBotReply() {
+  void sendBotReply(BuildContext context) {
     _scrollController.animateTo(
       _scrollController.position.maxScrollExtent,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
     );
     Future.delayed(const Duration(milliseconds: 500), () {
-      setState(() {
-        messages.add(Message(
-            message: 'Please wait! Processing your request.', sender: 'bot'));
-      });
+      Provider.of<MessageList>(context, listen: false).addNewPost(Message(
+          message: 'Please wait! Processing your request.', sender: 'bot'));
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
         duration: const Duration(milliseconds: 300),
@@ -68,6 +34,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    messages = Provider.of<MessageList>(context).posts;
     return Scaffold(
       appBar: AppBar(
         elevation: 2,
@@ -91,31 +58,34 @@ class _HomePageState extends State<HomePage> {
                 child: ListView.builder(
                   shrinkWrap: true,
                   controller: _scrollController,
-                  itemCount: messages.length,
+                  itemCount: messages!.length,
                   itemBuilder: (context, index) {
-                    if (index == messages.length) {
+                    if (index == messages!.length) {
                       return Container(
                         height: 70,
                       );
                     }
-                    if (messages[index].sender == "Me") {
-                      return OwnMessageCard();
+                    if (messages![index].sender == "Me") {
+                      return OwnMessageCard(
+                        message: messages![index].message,
+                      );
                     } else {
                       return ReplyCard(
-                        message: messages[index].message,
+                        message: messages![index].message,
                       );
                     }
                   },
                 ),
               ),
-              SizedBox(
-                // height: 150,
-                // width: MediaQuery.of(context).size.width,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [],
-                ),
-              )
+              const RecordToStreamExample(),
+              // SizedBox(
+              //   height: 150,
+              //   width: MediaQuery.of(context).size.width,
+              //   child: Row(
+              //     mainAxisAlignment: MainAxisAlignment.center,
+              //     children: [RecordToStreamExample()],
+              //   ),
+              // )
             ],
           ),
           // onWillPop: () {
@@ -124,28 +94,15 @@ class _HomePageState extends State<HomePage> {
           // },
         ),
       ),
-      // floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       // floatingActionButton: FloatingActionButton(
       //   backgroundColor: const Color(0xFF128C7E),
       //   onPressed: () {
-      //     if (_isRecorderOn) {
-      //       setState(() {
-      //         _isRecorderOn = false;
-      //         messages.add(Message(message: 'Recording Done', sender: 'Me'));
-      //         sendBotReply();
-      //       });
-      //     } else {
-      //       setState(() {
-      //         messages
-      //             .add(Message(message: 'Recording started!', sender: 'Bot'));
-      //         _isRecorderOn = true;
-      //       });
-      //     }
+      //     Provider.of<MessageList>(context, listen: false)
+      //         .addNewPost(Message(message: 'Recording Done', sender: 'Me'));
+      //     sendBotReply(context);
       //   },
       //   tooltip: 'Record',
-      //   child: _isRecorderOn
-      //       ? const Icon(Icons.stop)
-      //       : const Icon(Icons.mic_sharp),
+      //   child: const Icon(Icons.add),
       // ),
     );
   }

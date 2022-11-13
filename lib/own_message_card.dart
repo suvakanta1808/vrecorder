@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 class OwnMessageCard extends StatelessWidget {
-  // const OwnMessageCard({required this.message});
-  // final String message;
+  const OwnMessageCard({required this.message});
+  final String message;
 
   @override
   Widget build(BuildContext context) {
@@ -26,15 +26,15 @@ class OwnMessageCard extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
             child: Row(
-              children: const [
-                Icon(
+              children: [
+                const Icon(
                   Icons.audio_file_outlined,
                   size: 15,
                 ),
-                SizedBox(
+                const SizedBox(
                   width: 10,
                 ),
-                Text('recorded_audio.wav'),
+                Text(message),
               ],
             ),
           ),

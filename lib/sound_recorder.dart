@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
+import 'package:vrecorder/message.dart';
+import 'package:vrecorder/message_list.dart';
 import "audiowaveform_response.dart";
 
 /*
@@ -26,6 +29,8 @@ typedef _Fn = void Function();
 
 /// Example app.
 class RecordToStreamExample extends StatefulWidget {
+  const RecordToStreamExample({super.key});
+
   @override
   _RecordToStreamExampleState createState() => _RecordToStreamExampleState();
 }
@@ -37,6 +42,7 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
   bool _mRecorderIsInited = false;
   bool _mplaybackReady = false;
   String? _mPath;
+  String? filename;
   StreamSubscription? _mRecordingDataSubscription;
 
   Future<void> _openRecorder() async {
@@ -85,7 +91,6 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
 
   @override
   void dispose() {
-    stopPlayer();
     _mPlayer!.closePlayer();
     _mPlayer = null;
 
@@ -99,12 +104,11 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
     var tempDir = await getExternalStorageDirectory();
     var timestamp = '${DateTime.now().millisecondsSinceEpoch}.wav';
     setState(() {
+      filename = timestamp;
       _mPath = '${tempDir!.path}/$timestamp';
     });
     return _mPath!;
   }
-
-  // ----------------------  Here is the code to record to a Stream ------------
 
   Future<void> record() async {
     assert(_mRecorderIsInited && _mPlayer!.isStopped);
@@ -120,8 +124,7 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
   }
 
   sendRequest(String audioPath) async {
-    var postUri = Uri.parse(
-        "https://e376-2405-201-a00b-6081-e80c-9065-91b8-b936.ngrok.io/audiowave");
+    var postUri = Uri.parse("https://2a72-14-139-207-163.ngrok.io/audiowave");
     var request = http.MultipartRequest("POST", postUri);
     try {
       Uint8List fileBuffer = await File(audioPath).readAsBytes();
@@ -130,6 +133,8 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
         audioPath,
         contentType: MediaType('audio', 'mp3'),
       ));
+
+      print('Porcessing!');
       final response = await request.send();
 
       if (response.statusCode == 201) {
@@ -138,14 +143,28 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
         AudiowaveFormResponse audiowaveFormResponse =
             audiowaveFormResponseFromJson(respStr);
 
-        debugPrint(audiowaveFormResponse.data.toString());
+        var res = calculateResult(audiowaveFormResponse.data);
+
+        Provider.of<MessageList>(context, listen: false)
+            .addNewPost(Message(message: res.toString(), sender: 'Bot'));
+
+        Provider.of<MessageList>(context, listen: false).addNewPost(
+            Message(message: "Do you want something else?", sender: 'Bot'));
+        // debugPrint(audiowaveFormResponse.data.toString());
+      } else {
+        print("Request Failed!");
+        Provider.of<MessageList>(context, listen: false).addNewPost(
+            Message(message: 'Request failed. Try again!', sender: 'Bot'));
       }
     } catch (e) {
       print(e);
     }
   }
 
-  // --------------------- (it was very simple, wasn't it ?) -------------------
+  int calculateResult(List<double> data) {
+    // execute util functions
+    return 1;
+  }
 
   Future<void> stopRecorder() async {
     await _mRecorder!.stopRecorder();
@@ -154,6 +173,14 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
       _mRecordingDataSubscription = null;
     }
     _mplaybackReady = true;
+
+    Provider.of<MessageList>(context, listen: false)
+        .addNewPost(Message(message: filename!, sender: 'Me'));
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      Provider.of<MessageList>(context, listen: false).addNewPost(Message(
+          message: 'Please wait! Processing your request.', sender: 'bot'));
+    });
 
     sendRequest(_mPath!);
   }
@@ -169,110 +196,30 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
           };
   }
 
-  void play() async {
-    assert(_mPlayerIsInited &&
-        _mplaybackReady &&
-        _mRecorder!.isStopped &&
-        _mPlayer!.isStopped);
-    await _mPlayer!.startPlayer(
-        fromURI: _mPath,
-        sampleRate: tSampleRate,
-        codec: Codec.pcm16,
-        numChannels: 1,
-        whenFinished: () {
-          setState(() {});
-        }); // The readability of Dart is very special :-(
-    setState(() {});
-  }
-
-  Future<void> stopPlayer() async {
-    await _mPlayer!.stopPlayer();
-  }
-
-  _Fn? getPlaybackFn() {
-    if (!_mPlayerIsInited || !_mplaybackReady || !_mRecorder!.isStopped) {
-      return null;
-    }
-    return _mPlayer!.isStopped
-        ? play
-        : () {
-            stopPlayer().then((value) => setState(() {}));
-          };
-  }
-
-  // ----------------------------------------------------------------------------------------------------------------------
-
   @override
   Widget build(BuildContext context) {
-    Widget makeBody() {
-      return Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.all(3),
-            padding: const EdgeInsets.all(3),
-            height: 80,
-            width: double.infinity,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFAF0E6),
-              border: Border.all(
-                color: Colors.indigo,
-                width: 3,
-              ),
-            ),
-            child: Row(children: [
-              ElevatedButton(
-                onPressed: getRecorderFn(),
-                //color: Colors.white,
-                //disabledColor: Colors.grey,
-                child: Text(_mRecorder!.isRecording ? 'Stop' : 'Record'),
-              ),
-              const SizedBox(
-                width: 20,
-              ),
-              Text(_mRecorder!.isRecording
-                  ? 'Recording in progress'
-                  : 'Recorder is stopped'),
-            ]),
-          ),
-          Container(
-            margin: const EdgeInsets.all(3),
-            padding: const EdgeInsets.all(3),
-            height: 80,
-            width: double.infinity,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFAF0E6),
-              border: Border.all(
-                color: Colors.indigo,
-                width: 3,
-              ),
-            ),
-            child: Row(children: [
-              ElevatedButton(
-                onPressed: getPlaybackFn(),
-                //color: Colors.white,
-                //disabledColor: Colors.grey,
-                child: Text(_mPlayer!.isPlaying ? 'Stop' : 'Play'),
-              ),
-              const SizedBox(
-                width: 20,
-              ),
-              Text(_mPlayer!.isPlaying
-                  ? 'Playback in progress'
-                  : 'Player is stopped'),
-            ]),
-          ),
-        ],
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: Colors.blue,
-      appBar: AppBar(
-        title: const Text('Record to Stream ex.'),
+    return Container(
+      margin: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(3),
+      height: 70,
+      width: 70,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.blueGrey.shade500,
+        borderRadius: BorderRadius.circular(50),
       ),
-      body: makeBody(),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        IconButton(
+          onPressed: getRecorderFn(),
+          color: Colors.white,
+          icon: Icon(
+            _mRecorder!.isRecording
+                ? Icons.stop_circle_rounded
+                : Icons.mic_rounded,
+            size: 30,
+          ),
+        ),
+      ]),
     );
   }
 }
