@@ -269,13 +269,13 @@ List<double> split(List<double> amp) {
   }
 
   for (int i = start; i < amp.length; i++) {
-    if (amp[i] > 200) {
+    if (amp[i] > 100) {
       count = 0;
       newAmp.add(amp[i]);
     } else {
       newAmp.add(amp[i]);
       count++;
-      if (count > 100) break;
+      if (count > 300) break;
     }
   }
   return newAmp;

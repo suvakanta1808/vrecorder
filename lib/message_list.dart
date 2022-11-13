@@ -2,11 +2,27 @@ import 'package:flutter/foundation.dart';
 
 import './message.dart';
 
-class MessageList with ChangeNotifier {
-  List<Map<String, int>> order = [];
+enum itemType { Tea, Vada, Maggie, Others }
 
-  Future<void> addOrder(Map<String, int> item) async {
-    order.add(item);
+class Order {
+  itemType item;
+  int quantity;
+  double price;
+
+  Order({required this.item, required this.quantity, required this.price});
+}
+
+class MessageList with ChangeNotifier {
+  Map<String, Order> order = {
+    'Tea': Order(item: itemType.Tea, quantity: 0, price: 10),
+    'Vada': Order(item: itemType.Vada, quantity: 0, price: 20),
+    'Maggie': Order(item: itemType.Maggie, quantity: 0, price: 30),
+    'Others': Order(item: itemType.Others, quantity: 0, price: 40),
+  };
+
+  Future<void> addOrder(String itemName, int quantity) async {
+    debugPrint('Adding $itemName');
+    order[itemName]!.quantity += quantity;
     notifyListeners();
   }
 

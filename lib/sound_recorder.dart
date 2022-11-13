@@ -174,19 +174,56 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
 
         var res = calculateResult(audiowaveFormResponse.data);
         var item = findAns(res, questionIndex);
+        final provider = Provider.of<MessageList>(context, listen: false);
+        if (questionIndex == 1) {
+          var lastItem = provider.posts[provider.posts.length - 4];
+          debugPrint(lastItem.toString());
+          provider.addOrder(lastItem.message, int.parse(item));
+        }
 
-        Provider.of<MessageList>(context, listen: false)
-            .addMessage(Message(message: item, sender: 'Bot'));
+        provider.addMessage(Message(message: item, sender: 'Bot'));
+        if (questionIndex == 2) {
+          provider.addMessage(
+            Message(
+              message: 'Thank you for your order!',
+              sender: 'bot',
+            ),
+          );
+          var orders = provider.order;
+          double total = 0;
+          orders.forEach((key, value) {
+            if (value.quantity != 0) {
+              total += value.price * value.quantity;
+              String itemString =
+                  '$key - ${value.quantity} - ${value.quantity * value.price}';
+
+              provider.addMessage(
+                Message(
+                  message: itemString,
+                  sender: 'bot',
+                ),
+              );
+            }
+          });
+          provider.addMessage(
+            Message(
+              message: 'Total: $total',
+              sender: 'bot',
+            ),
+          );
+        }
 
         debugPrint(audiowaveFormResponse.data.toString());
+        questionIndex = (questionIndex + 1) % 3;
         addBotMessage(questionIndex);
       } else {
-        print("Request Failed!");
+        debugPrint("Request Failed!");
         Provider.of<MessageList>(context, listen: false).addMessage(
             Message(message: 'Request failed. Try again!', sender: 'Bot'));
       }
     } catch (e) {
-      print(e);
+      Provider.of<MessageList>(context, listen: false).addMessage(
+          Message(message: 'Request failed. Try again!', sender: 'Bot'));
     }
   }
 
@@ -211,22 +248,26 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
     }
   }
 
-  String findAns(int n, int questionIndex) {
+  String findAns(List<double> p, int questionIndex) {
     if (questionIndex == 0) {
+      var n = itemTest(p);
       return findItem(n);
     } else if (questionIndex == 1) {
+      var n = quantityTest(p);
       return findQuantity(n);
     } else {
+      var n = yesnoTest(p);
       return checkAnswer(n);
     }
   }
 
-  int calculateResult(List<double> data) {
+  List<double> calculateResult(List<double> data) {
     // execute util functions
     var amp = split(data);
     var obs = findObsSeq(amp);
     var prob = test(obs);
-    return itemTest(prob);
+    debugPrint(prob.toString());
+    return prob;
   }
 
   Future<void> stopRecorder() async {
