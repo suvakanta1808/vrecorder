@@ -1,6 +1,5 @@
 import 'dart:math' as MATH;
-
-import 'package:vrecorder/dataset-2.dart' as dt;
+import 'dataset.dart' as dt;
 
 List<double> hammingWindow(List<double> amp) {
   int N = amp.length;
@@ -11,47 +10,85 @@ List<double> hammingWindow(List<double> amp) {
   return window;
 }
 
+// List<double> durbinAlgo(List<double> amp) {
+//   List<double> r = List.filled(13, 0);
+
+//   for (int l = 0; l < 13; l++) {
+//     for (int p = 0; p < 320 - l; p++) {
+//       r[l] = r[l] + ((amp[p]) * amp[p + l]);
+//     }
+//   }
+
+//   double sum = 0;
+
+//   List<double> e = List.filled(13, 0);
+//   List<double> k = List.filled(13, 0);
+//   List<List<double>> alpha = List.filled(13, List.filled(13, 0));
+//   e[0] = r[0];
+
+//   for (int i = 1; i < 13; i++) {
+//     for (int j = 1; j <= i - 1; j++) {
+//       sum = sum + alpha[i - 1][j] * r[i - j];
+//     }
+//     if(e[i - 1] != 0){
+//     k[i] = (r[i] - sum) / e[i - 1];
+//     }
+//     else k[i] = 0;
+
+//     alpha[i][i] = k[i];
+
+//     for (int j = 1; j <= i - 1; j++) {
+//       alpha[i][j] = alpha[i - 1][j] - (k[i] * alpha[i - 1][i - j]);
+//     }
+
+//     e[i] = (1.0 - (k[i] * k[i])) * e[i - 1];
+
+//     sum = 0;
+//   }
+
+//   List<double> res = List.filled(13, 0);
+
+//   for (int x = 1; x < 13; x++) {
+//     res[x] = alpha[12][x];
+//   }
+
+//   return res;
+// }
+
 List<double> durbinAlgo(List<double> amp) {
-  List<double> r = List.filled(13, 0);
+  List<double> E = List.filled(13, 0);
+  List<double> k = List.filled(13, 0);
+  List<double> alptemp = List.filled(13, 0);
+  List<double> A = List.filled(13, 0);
+  List<double> R = List.filled(13, 0);
 
   for (int l = 0; l < 13; l++) {
     for (int p = 0; p < 320 - l; p++) {
-      r[l] = r[l] + ((amp[p]) * amp[p + l]);
+      R[l] = R[l] + ((amp[p]) * amp[p + l]);
     }
   }
 
-  double sum = 0;
+  for (int i = 0; i <= 12; i++) {
+    A[i] = 0;
+    alptemp[i] = 0;
+  }
 
-  List<double> e = List.filled(13, 0);
-  List<double> k = List.filled(13, 0);
-  List<List<double>> alpha = List.filled(13, List.filled(13, 0));
-  e[0] = r[0];
-
-  for (int i = 1; i < 13; i++) {
+  E[0] = R[0];
+  for (int i = 1; i <= 12; i++) {
+    double summation = 0;
     for (int j = 1; j <= i - 1; j++) {
-      sum = sum + alpha[i - 1][j] * r[i - j];
+      alptemp[j] = A[j];
+      summation += alptemp[j] * R[i - j];
     }
+    k[i] = (R[i] - summation) / E[i - 1];
 
-    k[i] = (r[i] - sum) / e[i - 1];
-
-    alpha[i][i] = k[i];
-
+    A[i] = k[i];
     for (int j = 1; j <= i - 1; j++) {
-      alpha[i][j] = alpha[i - 1][j] - (k[i] * alpha[i - 1][i - j]);
+      A[j] = alptemp[j] - k[i] * alptemp[i - j];
     }
-
-    e[i] = (1.0 - (k[i] * k[i])) * e[i - 1];
-
-    sum = 0;
+    E[i] = (1 - k[i] * k[i]) * E[i - 1];
   }
-
-  List<double> res = List.filled(13, 0);
-
-  for (int x = 1; x < 13; x++) {
-    res[x] = alpha[12][x];
-  }
-
-  return res;
+  return A;
 }
 
 List<double> calculateCepstal(List<double> a) {
@@ -109,9 +146,12 @@ List<double> tokuraDist(List<double> c) {
 }
 
 List<int> findObsSeq(List<double> amp) {
-  List<int> obs = List.of([], growable: true);
   final double max = amp.reduce(MATH.max);
+
   final double nFactor = 5000 / max;
+
+  List<int> obs = List.of([], growable: true);
+  obs.add(0);
   for (int i = 0; i < amp.length; i += 80) {
     if (i + 320 > amp.length) return obs;
 
@@ -119,22 +159,19 @@ List<int> findObsSeq(List<double> amp) {
     subList = subList.map((double x) => (x * nFactor)).toList();
 
     // hamming window
-    subList = hammingWindow(subList);
+    //subList = hammingWindow(subList);
 
     // find durbinAlgo res
 
     List<double> a = durbinAlgo(subList);
-
     // find cepstal
 
     List<double> cepstal = calculateCepstal(a);
-
     // find takura distance
 
     List<double> distance = tokuraDist(cepstal);
-
     // find min distance
-    obs.add(distance.indexOf(distance.reduce(MATH.min)));
+    obs.add(distance.indexOf(distance.reduce(MATH.min)) + 1);
   }
 
   return obs;
@@ -154,7 +191,11 @@ double forwardProcedure(List<double> pi, List<List<double>> a,
       for (int i = 1; i <= 5; i++) {
         sum += (alpha[t][i] * a[i][j]);
       }
+
       alpha[t + 1][j] = sum * b[j][obs[t + 1]];
+      if (t == 17) {
+        print(b[j][obs[t + 1]]);
+      }
       sum = 0;
     }
   }
@@ -164,16 +205,15 @@ double forwardProcedure(List<double> pi, List<List<double>> a,
   for (int m = 1; m <= 5; m++) {
     sum += alpha[T][m];
   }
-
   return sum;
 }
 
 List<double> test(List<int> obs) {
-  List<double> res = List.filled(10, 0);
+  List<double> res = List.filled(12, 0);
 
-  for (int i = 0; i < 10; i++) {
-    res[i] =
-        forwardProcedure(dt.pi, dt.matrixA[i], dt.matrixB[i], obs, obs.length);
+  for (int i = 0; i <= 11; i++) {
+    res[i] = forwardProcedure(
+        dt.pi, dt.matrixA[i], dt.matrixB[i], obs, obs.length - 1);
   }
 
   return res;
@@ -221,16 +261,32 @@ int yesnoTest(List<double> p) {
 List<double> split(List<double> amp) {
   List<double> newAmp = List.of([], growable: true);
   int count = 0;
+  int start = 0;
 
   for (int i = 0; i < amp.length; i++) {
+    start++;
+    if (amp[i] > 400) break;
+  }
+
+  for (int i = start; i < amp.length; i++) {
     if (amp[i] > 200) {
       count = 0;
       newAmp.add(amp[i]);
     } else {
       newAmp.add(amp[i]);
       count++;
-      if (count > 50) break;
+      if (count > 100) break;
     }
   }
   return newAmp;
 }
+
+
+// void main() {
+//   int count = 0;
+//   List<double> amp = split(dt.data);
+//   List<int> obs = findObsSeq(amp);
+//   List<double> res = test(obs);
+//   print(obs.length);
+//   //print(res);
+// }
