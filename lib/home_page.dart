@@ -21,8 +21,8 @@ class HomePage extends StatelessWidget {
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
     );
-    Future.delayed(const Duration(milliseconds: 500), () {
-      Provider.of<MessageList>(context, listen: false).addNewPost(Message(
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      Provider.of<MessageList>(context, listen: false).addMessage(Message(
           message: 'Please wait! Processing your request.', sender: 'bot'));
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,

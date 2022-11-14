@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:audio_session/audio_session.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
@@ -11,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:vrecorder/message.dart';
 import 'package:vrecorder/message_list.dart';
+import 'package:vrecorder/util-functions.dart';
 import "audiowaveform_response.dart";
 
 /*
@@ -23,7 +22,9 @@ import "audiowaveform_response.dart";
  *
  */
 
-///
+///'
+enum QuestionType { item, quantity, other }
+
 const int tSampleRate = 16000;
 typedef _Fn = void Function();
 
@@ -36,6 +37,7 @@ class RecordToStreamExample extends StatefulWidget {
 }
 
 class _RecordToStreamExampleState extends State<RecordToStreamExample> {
+  final QuestionType _qMode = QuestionType.quantity;
   FlutterSoundPlayer? _mPlayer = FlutterSoundPlayer();
   FlutterSoundRecorder? _mRecorder = FlutterSoundRecorder();
   bool _mPlayerIsInited = false;
@@ -44,6 +46,22 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
   String? _mPath;
   String? filename;
   StreamSubscription? _mRecordingDataSubscription;
+  List<Map<String, String>> questions = [
+    {
+      "question": "Which item do you prefer?",
+      "type": "item",
+    },
+    {
+      "question": "How many items do you want?",
+      "type": "quantity",
+    },
+    {
+      "question": "What else do you want?",
+      "type": "other",
+    },
+  ];
+
+  int questionIndex = 0;
 
   Future<void> _openRecorder() async {
     var status = await Permission.microphone.request();
@@ -123,11 +141,22 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
     setState(() {});
   }
 
+  void addBotMessage(int index) {
+    Provider.of<MessageList>(context, listen: false).addMessage(
+      Message(
+        message: questions[index]["question"]!,
+        sender: "bot",
+      ),
+    );
+
+    return;
+  }
+
   sendRequest(String audioPath) async {
-    var postUri = Uri.parse("https://2a72-14-139-207-163.ngrok.io/audiowave");
+    var postUri = Uri.parse(
+        "https://b075-2405-201-a00b-6081-451-cd96-f5ab-6f8c.ngrok.io/audiowave");
     var request = http.MultipartRequest("POST", postUri);
     try {
-      Uint8List fileBuffer = await File(audioPath).readAsBytes();
       request.files.add(await http.MultipartFile.fromPath(
         'file',
         audioPath,
@@ -144,26 +173,101 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
             audiowaveFormResponseFromJson(respStr);
 
         var res = calculateResult(audiowaveFormResponse.data);
+        var item = findAns(res, questionIndex);
+        final provider = Provider.of<MessageList>(context, listen: false);
+        if (questionIndex == 1) {
+          var lastItem = provider.posts[provider.posts.length - 4];
+          debugPrint(lastItem.toString());
+          provider.addOrder(lastItem.message, int.parse(item));
+        }
 
-        Provider.of<MessageList>(context, listen: false)
-            .addNewPost(Message(message: res.toString(), sender: 'Bot'));
+        provider.addMessage(Message(message: item, sender: 'Bot'));
+        if (questionIndex == 2) {
+          provider.addMessage(
+            Message(
+              message: 'Thank you for your order!',
+              sender: 'bot',
+            ),
+          );
+          var orders = provider.order;
+          double total = 0;
+          orders.forEach((key, value) {
+            if (value.quantity != 0) {
+              total += value.price * value.quantity;
+              String itemString =
+                  '$key - ${value.quantity} - ${value.quantity * value.price}';
 
-        Provider.of<MessageList>(context, listen: false).addNewPost(
-            Message(message: "Do you want something else?", sender: 'Bot'));
-        // debugPrint(audiowaveFormResponse.data.toString());
+              provider.addMessage(
+                Message(
+                  message: itemString,
+                  sender: 'bot',
+                ),
+              );
+            }
+          });
+          provider.addMessage(
+            Message(
+              message: 'Total: $total',
+              sender: 'bot',
+            ),
+          );
+        }
+
+        debugPrint(audiowaveFormResponse.data.toString());
+        questionIndex = (questionIndex + 1) % 3;
+        addBotMessage(questionIndex);
       } else {
-        print("Request Failed!");
-        Provider.of<MessageList>(context, listen: false).addNewPost(
+        debugPrint("Request Failed!");
+        Provider.of<MessageList>(context, listen: false).addMessage(
             Message(message: 'Request failed. Try again!', sender: 'Bot'));
       }
     } catch (e) {
-      print(e);
+      Provider.of<MessageList>(context, listen: false).addMessage(
+          Message(message: 'Request failed. Try again!', sender: 'Bot'));
     }
   }
 
-  int calculateResult(List<double> data) {
+  String checkAnswer(int n) {
+    return n == 3 ? "Yes" : "No";
+  }
+
+  String findQuantity(int n) {
+    return (n - 4).toString();
+  }
+
+  String findItem(int n) {
+    switch (n) {
+      case 0:
+        return 'Tea';
+      case 1:
+        return 'Vada';
+      case 2:
+        return 'Maggie';
+      default:
+        return 'Other';
+    }
+  }
+
+  String findAns(List<double> p, int questionIndex) {
+    if (questionIndex == 0) {
+      var n = itemTest(p);
+      return findItem(n);
+    } else if (questionIndex == 1) {
+      var n = quantityTest(p);
+      return findQuantity(n);
+    } else {
+      var n = yesnoTest(p);
+      return checkAnswer(n);
+    }
+  }
+
+  List<double> calculateResult(List<double> data) {
     // execute util functions
-    return 1;
+    var amp = split(data);
+    var obs = findObsSeq(amp);
+    var prob = test(obs);
+    debugPrint(prob.toString());
+    return prob;
   }
 
   Future<void> stopRecorder() async {
@@ -175,10 +279,10 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
     _mplaybackReady = true;
 
     Provider.of<MessageList>(context, listen: false)
-        .addNewPost(Message(message: filename!, sender: 'Me'));
+        .addMessage(Message(message: filename!, sender: 'Me'));
 
     Future.delayed(const Duration(milliseconds: 500), () {
-      Provider.of<MessageList>(context, listen: false).addNewPost(Message(
+      Provider.of<MessageList>(context, listen: false).addMessage(Message(
           message: 'Please wait! Processing your request.', sender: 'bot'));
     });
 
