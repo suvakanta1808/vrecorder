@@ -30,7 +30,11 @@ typedef _Fn = void Function();
 
 /// Example app.
 class RecordToStreamExample extends StatefulWidget {
-  const RecordToStreamExample({super.key});
+  final ScrollController scrollController;
+  const RecordToStreamExample({
+    super.key,
+    required this.scrollController,
+  });
 
   @override
   _RecordToStreamExampleState createState() => _RecordToStreamExampleState();
@@ -62,6 +66,14 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
   ];
 
   int questionIndex = 0;
+
+  scrollToBottom(ScrollController scrollController, {double value = 0.0}) {
+    scrollController.animateTo(
+      scrollController.position.maxScrollExtent + 70 + value,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
+  }
 
   Future<void> _openRecorder() async {
     var status = await Permission.microphone.request();
@@ -148,13 +160,13 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
         sender: "bot",
       ),
     );
+    scrollToBottom(widget.scrollController);
 
     return;
   }
 
   sendRequest(String audioPath) async {
-    var postUri = Uri.parse(
-        "https://b075-2405-201-a00b-6081-451-cd96-f5ab-6f8c.ngrok.io/audiowave");
+    var postUri = Uri.parse("https://9695-14-139-207-163.ngrok.io/audiowave");
     var request = http.MultipartRequest("POST", postUri);
     try {
       request.files.add(await http.MultipartFile.fromPath(
@@ -182,6 +194,8 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
         }
 
         provider.addMessage(Message(message: item, sender: 'Bot'));
+        scrollToBottom(widget.scrollController);
+
         if (questionIndex == 2) {
           provider.addMessage(
             Message(
@@ -189,6 +203,7 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
               sender: 'bot',
             ),
           );
+          scrollToBottom(widget.scrollController);
           var orders = provider.order;
           double total = 0;
           orders.forEach((key, value) {
@@ -204,6 +219,7 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
                 ),
               );
             }
+            scrollToBottom(widget.scrollController);
           });
           provider.addMessage(
             Message(
@@ -211,6 +227,7 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
               sender: 'bot',
             ),
           );
+          scrollToBottom(widget.scrollController, value: 400);
         }
 
         debugPrint(audiowaveFormResponse.data.toString());
@@ -220,10 +237,16 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
         debugPrint("Request Failed!");
         Provider.of<MessageList>(context, listen: false).addMessage(
             Message(message: 'Request failed. Try again!', sender: 'Bot'));
+        scrollToBottom(widget.scrollController);
+        // widget.scrollController
+        //     .jumpTo(widget.scrollController.position.maxScrollExtent);
       }
     } catch (e) {
       Provider.of<MessageList>(context, listen: false).addMessage(
           Message(message: 'Request failed. Try again!', sender: 'Bot'));
+      scrollToBottom(widget.scrollController);
+      // widget.scrollController
+      //     .jumpTo(widget.scrollController.position.maxScrollExtent);
     }
   }
 
@@ -284,6 +307,9 @@ class _RecordToStreamExampleState extends State<RecordToStreamExample> {
     Future.delayed(const Duration(milliseconds: 500), () {
       Provider.of<MessageList>(context, listen: false).addMessage(Message(
           message: 'Please wait! Processing your request.', sender: 'bot'));
+      scrollToBottom(widget.scrollController);
+      // widget.scrollController
+      //     .jumpTo(widget.scrollController.position.maxScrollExtent);
     });
 
     sendRequest(_mPath!);

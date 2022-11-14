@@ -77,7 +77,9 @@ class HomePage extends StatelessWidget {
                   },
                 ),
               ),
-              const RecordToStreamExample(),
+              RecordToStreamExample(
+                scrollController: _scrollController,
+              ),
               // SizedBox(
               //   height: 150,
               //   width: MediaQuery.of(context).size.width,

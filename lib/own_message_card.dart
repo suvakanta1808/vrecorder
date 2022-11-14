@@ -10,7 +10,7 @@ class OwnMessageCard extends StatelessWidget {
       alignment: Alignment.centerRight,
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.55,
+          maxWidth: MediaQuery.of(context).size.width * 0.65,
         ),
         child: Card(
           elevation: 1,
